@@ -25,7 +25,8 @@ const FRIENDLY_NAMES = {
   brownout: 'Slow Server Network Test',
   pod_crash: 'Server Crash Test',
   poison_pill: 'Bad Data Error Storm',
-  multi_region: 'Azure Data Center Outage Test'
+  multi_region: 'Azure Data Center Outage Test',
+  cascading_timeout: 'Cascading Timeout Domino Test'
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -318,6 +319,11 @@ function handleTelemetryTick(data) {
     renderCostAnalyzer(data.cost);
   }
 
+  // Multi-Region Failover Visualizer (Page 1)
+  if (data.multiRegion) {
+    renderMultiRegion(data.multiRegion);
+  }
+
   // GameDay (Page 3)
   renderGameDay(gameday);
 }
@@ -417,6 +423,100 @@ function renderCostAnalyzer(cost) {
   const tipEl = document.getElementById('finopsTipText');
   if (tipEl && cost.highestCostService) {
     tipEl.innerHTML = `<b>${cost.highestCostService.name}</b> accounts for the highest cloud cost (<b>${cost.highestCostService.percentage}%</b> of your bill) due to serverless RU/s bursts under traffic surges. Enabling the <b>Safety Shield</b> routes requests to Azure Redis Cache, saving approximately <b>$${cost.shieldSavingsUsd.toFixed(2)} USD</b> and preventing runaway database charges.`;
+  }
+}
+
+// 7. Multi-Region Real-Time Traffic & Failover Visualizer
+function renderMultiRegion(mr) {
+  if (!mr || !mr.regions) return;
+
+  const { eastUs, westUs } = mr.regions;
+  const isFailover = mr.frontDoor.routingState === 'EMERGENCY_FAILOVER_ACTIVE';
+
+  // 1. Top Routing Badge
+  const badgeEl = document.getElementById('routingBadge');
+  const badgeTextEl = document.getElementById('routingBadgeText');
+  if (badgeEl && badgeTextEl) {
+    if (isFailover) {
+      badgeEl.className = 'routing-badge failover';
+      badgeTextEl.innerText = '🚨 EMERGENCY FAILOVER ACTIVE (West US Serving 100%)';
+    } else {
+      badgeEl.className = 'routing-badge normal';
+      badgeTextEl.innerText = 'Normal Routing (East US Active)';
+    }
+  }
+
+  // 2. Region 1 (East US)
+  const eastBox = document.getElementById('regionEastBox');
+  const eastStatus = document.getElementById('regionEastStatus');
+  const eastRole = document.getElementById('regionEastRole');
+  const eastTraffic = document.getElementById('regionEastTraffic');
+  const eastLatency = document.getElementById('regionEastLatency');
+  const eastProbe = document.getElementById('regionEastProbe');
+
+  if (eastBox && eastStatus) {
+    if (eastUs.isHealthy) {
+      eastBox.className = 'region-box active';
+      eastStatus.className = 'status-pill healthy';
+      eastStatus.innerText = 'HEALTHY';
+      eastRole.innerText = eastUs.role;
+      eastLatency.innerText = `${eastUs.latencyMs} ms`;
+      eastProbe.innerText = eastUs.probeStatus;
+    } else {
+      eastBox.className = 'region-box down';
+      eastStatus.className = 'status-pill down';
+      eastStatus.innerText = 'OUTAGE DETECTED';
+      eastRole.innerText = 'Primary (DOWN)';
+      eastLatency.innerText = 'Timeout (503)';
+      eastProbe.innerText = eastUs.probeStatus;
+    }
+    eastTraffic.innerText = `${eastUs.trafficPct}%`;
+  }
+
+  // 3. Region 2 (West US)
+  const westBox = document.getElementById('regionWestBox');
+  const westStatus = document.getElementById('regionWestStatus');
+  const westRole = document.getElementById('regionWestRole');
+  const westTraffic = document.getElementById('regionWestTraffic');
+  const westLatency = document.getElementById('regionWestLatency');
+  const westProbe = document.getElementById('regionWestProbe');
+
+  if (westBox && westStatus) {
+    if (isFailover || westUs.trafficPct > 0) {
+      westBox.className = 'region-box active';
+      westStatus.className = 'status-pill healthy';
+      westStatus.innerText = 'ACTIVE (REROUTED)';
+      westRole.innerText = 'Failover Region (ACTIVE)';
+    } else {
+      westBox.className = 'region-box standby';
+      westStatus.className = 'status-pill standby';
+      westStatus.innerText = 'STANDBY READY';
+      westRole.innerText = westUs.role;
+    }
+    westTraffic.innerText = `${westUs.trafficPct}%`;
+    westLatency.innerText = `${westUs.latencyMs} ms`;
+    westProbe.innerText = westUs.probeStatus;
+  }
+
+  // 4. Center Split Bar
+  const fillEast = document.getElementById('splitFillEast');
+  const fillWest = document.getElementById('splitFillWest');
+  const labelEast = document.getElementById('splitEastLabel');
+  const labelWest = document.getElementById('splitWestLabel');
+  const speedText = document.getElementById('failoverSpeedText');
+
+  if (fillEast && fillWest) {
+    fillEast.style.width = `${eastUs.trafficPct}%`;
+    fillWest.style.width = `${westUs.trafficPct}%`;
+  }
+  if (labelEast && labelWest) {
+    labelEast.innerText = `East US: ${eastUs.trafficPct}%`;
+    labelWest.innerText = `West US: ${westUs.trafficPct}%`;
+  }
+  if (speedText && isFailover) {
+    speedText.innerText = `Rerouted in ${mr.frontDoor.failoverTimeSec}s (0 Sessions Lost)`;
+  } else if (speedText) {
+    speedText.innerText = 'Zero Loss Rerouting (< 2.4s)';
   }
 }
 

@@ -67,6 +67,13 @@ SCENARIOS = {
         "target": "Azure Front Door / East US",
         "description": "Simulates primary East US region shutting down to verify automatic switch to West US.",
         "payload": {"scenario": "East US Outage", "isOffline": True, "latencyMs": 0, "errorRate": 0.0, "cosmos429Rate": 0.0}
+    },
+    "cascading_timeout": {
+        "id": "cascading_timeout",
+        "name": "Cascading Timeout Domino",
+        "target": "Third-Party Payment & Tax Gateway",
+        "description": "Simulates downstream dependencies hanging for 5 seconds without erroring, testing fast-fail timeout shields and bulkhead thread pool protection.",
+        "payload": {"scenario": "Cascading Timeout Domino", "latencyMs": 5000, "errorRate": 0.0, "cosmos429Rate": 0.0, "isOffline": False}
     }
 }
 
@@ -217,6 +224,81 @@ class BaselineEngine:
         }
 
 baseline = BaselineEngine()
+
+class MultiRegionEngine:
+    """
+    Simulates Azure Front Door Global Traffic Routing with Continuous Health Probes.
+    - Normal: East US (Virginia) 100% Active (28ms), West US (California) 0% Hot Standby (64ms).
+    - Outage: East US health probes fail (503 / Timeout). Front Door dynamically shifts
+      100% of global user traffic to West US in < 2.4s with 0 dropped sessions.
+    """
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.east_us = {
+            "name": "East US (Virginia)",
+            "role": "Primary Region",
+            "isHealthy": True,
+            "trafficPct": 100,
+            "latencyMs": 28,
+            "probeStatus": "HTTP 200 OK"
+        }
+        self.west_us = {
+            "name": "West US (California)",
+            "role": "Hot Standby",
+            "isHealthy": True,
+            "trafficPct": 0,
+            "latencyMs": 64,
+            "probeStatus": "HTTP 200 OK (Standby Ready)"
+        }
+        self.front_door = {
+            "routingState": "NORMAL_ROUTING",
+            "activeRegion": "East US (Virginia)",
+            "failoverTimeSec": 0.0,
+            "packetsLost": 0
+        }
+
+    def evaluate(self, is_multi_region_outage: bool, elapsed_sec: int = 0):
+        if is_multi_region_outage:
+            shift_ratio = min(1.0, elapsed_sec / 2.0)
+            east_traffic = int(100 * (1.0 - shift_ratio))
+            west_traffic = 100 - east_traffic
+
+            self.east_us = {
+                "name": "East US (Virginia)",
+                "role": "Primary (DOWN)",
+                "isHealthy": False,
+                "trafficPct": east_traffic,
+                "latencyMs": 9999,
+                "probeStatus": "CONNECTION_TIMED_OUT (503)"
+            }
+            self.west_us = {
+                "name": "West US (California)",
+                "role": "Failover Region (ACTIVE)",
+                "isHealthy": True,
+                "trafficPct": west_traffic,
+                "latencyMs": 62,
+                "probeStatus": "HTTP 200 OK (Serving 100% Traffic)"
+            }
+            self.front_door = {
+                "routingState": "EMERGENCY_FAILOVER_ACTIVE",
+                "activeRegion": "West US (California)",
+                "failoverTimeSec": 1.8,
+                "packetsLost": 0
+            }
+        else:
+            self.reset()
+
+        return {
+            "frontDoor": self.front_door,
+            "regions": {
+                "eastUs": self.east_us,
+                "westUs": self.west_us
+            }
+        }
+
+multi_region_engine = MultiRegionEngine()
 
 class GameDayManager:
     def __init__(self):
@@ -398,6 +480,10 @@ async def broadcast_loop():
                 current_experiment["status"] = "COMPLETED"
                 current_experiment["scorecard"] = calculate_score(traffic_snap["sent"], traffic_snap["failed"], traffic_snap["p99"])
 
+        is_multi_region_test = (current_experiment["status"] == "ACTIVE" and 
+                                current_experiment.get("scenario", {}).get("id") == "multi_region")
+        mr_state = multi_region_engine.evaluate(is_multi_region_test, current_experiment.get("elapsedSec", 0))
+
         payload = json.dumps({
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "experiment": current_experiment,
@@ -412,7 +498,8 @@ async def broadcast_loop():
             },
             "cost": cost_state,
             "baseline": baseline_state,
-            "gameday": {"activeDrill": gameday.active_drill, "leaderboard": gameday.leaderboard}
+            "gameday": {"activeDrill": gameday.active_drill, "leaderboard": gameday.leaderboard},
+            "multiRegion": mr_state
         })
 
         for client in list(connected_clients):
@@ -514,6 +601,12 @@ async def mitigate_gameday(req: MitigateRequest):
     await reset_payment_faults()
     summary = gameday.mitigate(req.teamName)
     return {"message": "Incident resolved!", "summary": summary}
+
+@app.get("/api/regions/status")
+async def get_multi_region_status():
+    is_multi_region_test = (current_experiment["status"] == "ACTIVE" and 
+                            current_experiment.get("scenario", {}).get("id") == "multi_region")
+    return multi_region_engine.evaluate(is_multi_region_test, current_experiment.get("elapsedSec", 0))
 
 if __name__ == "__main__":
     import uvicorn

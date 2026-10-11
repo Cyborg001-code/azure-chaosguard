@@ -187,6 +187,94 @@
             </div>
           </div>
         </div>
+
+        <!-- Global Multi-Region Routing Visualizer Card -->
+        <div class="clean-card multi-region-card">
+          <div class="card-top">
+            <div>
+              <h3>Global Multi-Region Routing (Azure Front Door)</h3>
+              <p class="card-desc">Active-Active traffic distribution & automatic data center failover across cloud regions.</p>
+            </div>
+            <div class="routing-badge normal" id="routingBadge">
+              <span class="routing-dot"></span>
+              <span id="routingBadgeText">Normal Routing (East US)</span>
+            </div>
+          </div>
+
+          <div class="regions-display-grid">
+            <!-- Region 1: East US -->
+            <div class="region-box active" id="regionEastBox">
+              <div class="region-box-header">
+                <div class="region-title-group">
+                  <span class="region-flag">📍</span>
+                  <div>
+                    <h4>East US (Virginia)</h4>
+                    <span class="region-role" id="regionEastRole">Primary Region</span>
+                  </div>
+                </div>
+                <span class="status-pill healthy" id="regionEastStatus">HEALTHY</span>
+              </div>
+              <div class="region-metrics">
+                <div class="region-metric">
+                  <label>TRAFFIC SHARE</label>
+                  <span class="val-big" id="regionEastTraffic">100%</span>
+                </div>
+                <div class="region-metric">
+                  <label>PING DELAY</label>
+                  <span class="val" id="regionEastLatency">28 ms</span>
+                </div>
+                <div class="region-metric">
+                  <label>HEALTH PROBE</label>
+                  <span class="val-code" id="regionEastProbe">HTTP 200 OK</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Center Failover Pipe / Splitter -->
+            <div class="traffic-splitter-pipe">
+              <div class="pipe-label">
+                <span>AZURE FRONT DOOR TRAFFIC SPLIT</span>
+                <span id="failoverSpeedText">Zero Loss Rerouting (&lt; 2.4s)</span>
+              </div>
+              <div class="split-progress-bar">
+                <div class="split-fill east" id="splitFillEast" style="width: 100%;"></div>
+                <div class="split-fill west" id="splitFillWest" style="width: 0%;"></div>
+              </div>
+              <div class="pipe-endpoints">
+                <span id="splitEastLabel">East US: 100%</span>
+                <span id="splitWestLabel">West US: 0%</span>
+              </div>
+            </div>
+
+            <!-- Region 2: West US -->
+            <div class="region-box standby" id="regionWestBox">
+              <div class="region-box-header">
+                <div class="region-title-group">
+                  <span class="region-flag">📍</span>
+                  <div>
+                    <h4>West US (California)</h4>
+                    <span class="region-role" id="regionWestRole">Hot Standby</span>
+                  </div>
+                </div>
+                <span class="status-pill standby" id="regionWestStatus">STANDBY READY</span>
+              </div>
+              <div class="region-metrics">
+                <div class="region-metric">
+                  <label>TRAFFIC SHARE</label>
+                  <span class="val-big" id="regionWestTraffic">0%</span>
+                </div>
+                <div class="region-metric">
+                  <label>PING DELAY</label>
+                  <span class="val" id="regionWestLatency">64 ms</span>
+                </div>
+                <div class="region-metric">
+                  <label>HEALTH PROBE</label>
+                  <span class="val-code" id="regionWestProbe">HTTP 200 OK</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- PAGE 2: STRESS TESTS CENTER -->
@@ -238,6 +326,14 @@
                 <div class="scenario-info">
                   <h4>Data Center Outage (Failover)</h4>
                   <p>Simulates primary East US region shutting down to verify automatic switch to West US.</p>
+                </div>
+              </div>
+
+              <div class="scenario-option" data-scenario="cascading_timeout">
+                <div class="scenario-icon">⏳</div>
+                <div class="scenario-info">
+                  <h4>Cascading Timeout Domino</h4>
+                  <p>Simulates downstream third-party partner freezing for 5s without failing, testing fast-fail timeout shields.</p>
                 </div>
               </div>
             </div>
