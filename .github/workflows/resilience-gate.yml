@@ -15,32 +15,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
         with:
-          node-version: 20
+          python-version: '3.11'
 
-      - name: Install Target Microservices Dependencies
+      - name: Install Python Microservices & Chaos Engine Dependencies
         run: |
-          cd apps/target-ecommerce
-          npm ci
+          python -m pip install --upgrade pip
+          pip install -r backend_python/requirements.txt
 
-      - name: Install Chaos Engine Dependencies
+      - name: Start Python Services & Chaos Controller Stack
         run: |
-          cd apps/chaos-engine
-          npm ci
-
-      - name: Start Target Microservices
-        run: |
-          cd apps/target-ecommerce
-          npm start &
-          sleep 3
-
-      - name: Start Chaos Controller API
-        run: |
-          cd apps/chaos-engine
-          npm start &
-          sleep 3
+          python backend_python/run_all.py &
+          sleep 5
 
       - name: Execute Automated 30s Chaos Experiment (Cosmos 429 Storm)
         run: |
