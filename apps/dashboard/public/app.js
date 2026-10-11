@@ -208,8 +208,22 @@ function initWebSocket() {
 
 // 5. Live Telemetry Processing
 function handleTelemetryTick(data) {
-  const { experiment, traffic, telemetry, finops, baseline, gameday } = data;
+  const { experiment, traffic, telemetry, finops, baseline, gameday, azureAccount } = data;
   const now = new Date().toLocaleTimeString();
+
+  // Sidebar Azure Account Status
+  if (azureAccount) {
+    const wsText = document.getElementById('wsStatusText');
+    if (wsText) {
+      if (azureAccount.isLive) {
+        wsText.innerText = `Azure Cloud: Live (${azureAccount.authMethod})`;
+        wsText.title = `Connected to Subscription: ${azureAccount.subscriptionId}`;
+      } else {
+        wsText.innerText = 'Azure: Simulation Mode';
+        wsText.title = 'Local simulation active. Fill in .env.azure or run az login to connect your real Azure account.';
+      }
+    }
+  }
 
   // Top Header Banner
   const titleEl = document.getElementById('headerTestTitle');

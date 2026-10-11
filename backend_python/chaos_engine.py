@@ -10,6 +10,7 @@ import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from azure_connector import get_azure_status
 
 try:
     if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
@@ -499,7 +500,8 @@ async def broadcast_loop():
             "cost": cost_state,
             "baseline": baseline_state,
             "gameday": {"activeDrill": gameday.active_drill, "leaderboard": gameday.leaderboard},
-            "multiRegion": mr_state
+            "multiRegion": mr_state,
+            "azureAccount": get_azure_status()
         })
 
         for client in list(connected_clients):
@@ -607,6 +609,10 @@ async def get_multi_region_status():
     is_multi_region_test = (current_experiment["status"] == "ACTIVE" and 
                             current_experiment.get("scenario", {}).get("id") == "multi_region")
     return multi_region_engine.evaluate(is_multi_region_test, current_experiment.get("elapsedSec", 0))
+
+@app.get("/api/azure/status")
+async def get_azure_cloud_status():
+    return get_azure_status()
 
 if __name__ == "__main__":
     import uvicorn
