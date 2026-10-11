@@ -3,12 +3,19 @@ import json
 import math
 import random
 import time
+import sys
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+try:
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 app = FastAPI(title="Azure ChaosGuard Controller API", version="1.0.0")
 
@@ -259,7 +266,8 @@ async def websocket_endpoint(ws: WebSocket):
         while True:
             await ws.receive_text()
     except WebSocketDisconnect:
-        connected_clients.remove(ws)
+        if ws in connected_clients:
+            connected_clients.remove(ws)
 
 async def fetch_order_metrics():
     async with httpx.AsyncClient(timeout=1.0) as client:
@@ -319,13 +327,13 @@ async def broadcast_loop():
             current_experiment["elapsedSec"] += 1
 
             if finops_state["isTripped"]:
-                print("[CHAOS-PY] 💰 FinOps Budget reached. Aborting test.")
+                print("[CHAOS-PY] [FINOPS-ABORT] Budget ceiling reached. Aborting test.")
                 traffic.is_running = False
                 await reset_payment_faults()
                 current_experiment["status"] = "ABORTED"
 
             if current_experiment["elapsedSec"] >= current_experiment["durationSec"]:
-                print("[CHAOS-PY] ✅ Experiment duration completed. Reverting faults.")
+                print("[CHAOS-PY] [COMPLETED] Experiment duration finished. Reverting faults.")
                 traffic.is_running = False
                 await reset_payment_faults()
                 current_experiment["status"] = "COMPLETED"
@@ -345,7 +353,8 @@ async def broadcast_loop():
             try:
                 await client.send_text(payload)
             except Exception:
-                connected_clients.remove(client)
+                if client in connected_clients:
+                    connected_clients.remove(client)
 
 async def inject_payment_fault(payload: dict):
     async with httpx.AsyncClient(timeout=2.0) as client:
@@ -379,12 +388,12 @@ async def start_experiment(req: StartExperimentRequest):
     current_experiment["scorecard"] = None
 
     await inject_payment_fault(scenario["payload"])
-    print(f"[CHAOS-PY] ⚡ Test started: {scenario['name']} for {req.durationSec}s at {req.rps} RPS")
+    print(f"[CHAOS-PY] [TEST-STARTED] {scenario['name']} for {req.durationSec}s at {req.rps} RPS")
     return {"message": "Experiment started", "experiment": current_experiment}
 
 @app.post("/api/experiments/abort")
 async def abort_experiment():
-    print("[CHAOS-PY] 🛑 EMERGENCY STOP TRIGGERED!")
+    print("[CHAOS-PY] [EMERGENCY-STOP] Emergency abort triggered!")
     traffic.is_running = False
     await reset_payment_faults()
     if current_experiment["status"] == "ACTIVE":

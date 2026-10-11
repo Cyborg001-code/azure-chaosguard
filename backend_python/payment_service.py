@@ -1,11 +1,18 @@
 import asyncio
 import random
 import time
+import sys
 from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+
+try:
+    if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
 
 app = FastAPI(title="Target Payment Service", version="1.0.0")
 
@@ -64,7 +71,7 @@ async def inject_faults(req: FaultInjectionRequest):
     active_faults["cosmos429Rate"] = req.cosmos429Rate or 0.0
     active_faults["isOffline"] = req.isOffline or False
     active_faults["injectedAt"] = datetime.now(timezone.utc).isoformat()
-    print(f"[PAYMENT-PY] 🚨 FAULT INJECTED: Scenario={active_faults['scenarioName']}, Latency={active_faults['latencyMs']}ms, 429Rate={active_faults['cosmos429Rate']}")
+    print(f"[PAYMENT-PY] [FAULT-INJECTED] Scenario={active_faults['scenarioName']}, Latency={active_faults['latencyMs']}ms, 429Rate={active_faults['cosmos429Rate']}")
     return {"message": "Fault active", "activeFaults": active_faults}
 
 @app.post("/faults/reset")
@@ -75,7 +82,7 @@ async def reset_faults():
     active_faults["isOffline"] = False
     active_faults["scenarioName"] = "NONE"
     active_faults["injectedAt"] = None
-    print("[PAYMENT-PY] 🛡️ FAULTS CLEARED: Clean healthy state restored")
+    print("[PAYMENT-PY] [FAULTS-CLEARED] Clean healthy state restored")
     return {"message": "All faults cleared", "activeFaults": active_faults}
 
 @app.get("/faults/status")

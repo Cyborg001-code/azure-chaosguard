@@ -34,7 +34,7 @@ class CircuitBreaker:
             if now - self.last_failure_time >= self.recovery_timeout:
                 self.state = "HALF_OPEN"
                 self._record_event("CIRCUIT_HALF_OPEN", "Circuit breaker entered HALF-OPEN state. Probing downstream health.")
-                print("[CIRCUIT-BREAKER-PY] 🟡 ENTERED HALF-OPEN: Testing downstream recovery.")
+                print("[CIRCUIT-BREAKER-PY] [HALF-OPEN] Testing downstream recovery.")
             else:
                 # Still OPEN: Immediately invoke fallback in 0ms!
                 self.fallback_count += 1
@@ -49,7 +49,7 @@ class CircuitBreaker:
                 self.state = "CLOSED"
                 self.consecutive_failures = 0
                 self._record_event("CIRCUIT_CLOSED", "Circuit breaker reset to CLOSED after successful recovery probe.")
-                print("[CIRCUIT-BREAKER-PY] ✅ RESET TO CLOSED: Full recovery verified.")
+                print("[CIRCUIT-BREAKER-PY] [RESET-CLOSED] Full recovery verified.")
             else:
                 self.consecutive_failures = 0
 
@@ -65,7 +65,7 @@ class CircuitBreaker:
                     self.state = "OPEN"
                     self.trip_count += 1
                     self._record_event("CIRCUIT_OPEN", f"Circuit breaker tripped to OPEN due to {self.consecutive_failures} consecutive failures.")
-                    print(f"[CIRCUIT-BREAKER-PY] ⚠️ TRIPPED TO OPEN: Downstream failing. Shield activated.")
+                    print(f"[CIRCUIT-BREAKER-PY] [TRIPPED-OPEN] Downstream failing. Shield activated.")
 
             # Invoke fallback policy gracefully
             self.fallback_count += 1
