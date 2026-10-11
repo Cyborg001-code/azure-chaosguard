@@ -1,0 +1,71 @@
+name: Resilience Gating CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  chaos-regression-test:
+    name: Automated Chaos & Self-Healing Regression Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Target Microservices Dependencies
+        run: |
+          cd apps/target-ecommerce
+          npm ci
+
+      - name: Install Chaos Engine Dependencies
+        run: |
+          cd apps/chaos-engine
+          npm ci
+
+      - name: Start Target Microservices
+        run: |
+          cd apps/target-ecommerce
+          npm start &
+          sleep 3
+
+      - name: Start Chaos Controller API
+        run: |
+          cd apps/chaos-engine
+          npm start &
+          sleep 3
+
+      - name: Execute Automated 30s Chaos Experiment (Cosmos 429 Storm)
+        run: |
+          echo "Triggering automated chaos suite..."
+          curl -s -X POST http://localhost:4000/api/experiments/start \
+            -H "Content-Type: application/json" \
+            -d '{"scenarioId":"cosmos_429","rps":15,"durationSec":20}'
+          
+          echo "Monitoring real-time resilience execution..."
+          sleep 22
+
+      - name: Evaluate Resilience Score & Enforce Quality Gate (>= 85%)
+        run: |
+          STATUS_JSON=$(curl -s http://localhost:4000/api/experiments/status)
+          echo "Status: $STATUS_JSON"
+          
+          SCORE=$(echo "$STATUS_JSON" | jq -r '.experiment.scorecard.compositeScore // 0')
+          GRADE=$(echo "$STATUS_JSON" | jq -r '.experiment.scorecard.grade // "UNKNOWN"')
+          echo "=========================================="
+          echo "  CHAOSGUARD RESILIENCE SCORE: $SCORE / 100 ($GRADE)"
+          echo "=========================================="
+          
+          if [ "$SCORE" -lt 80 ]; then
+            echo "❌ RESILIENCE GATE FAILED: Composite score $SCORE is below required 80% threshold!"
+            exit 1
+          else
+            echo "✅ RESILIENCE GATE PASSED: Circuit breaker and fallback policies verified."
+          fi

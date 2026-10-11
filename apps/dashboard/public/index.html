@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure ChaosGuard | Cloud Auto-Healing & Reliability Platform</title>
+  <meta name="description" content="Clean multi-page reliability and auto-healing dashboard for Microsoft Azure web apps.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="app-shell">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo-shield">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
+            <path d="M12 8v4l3 3"/>
+          </svg>
+        </div>
+        <div>
+          <h2>ChaosGuard</h2>
+          <span class="brand-tag">Azure Auto-Healing</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-page="page-overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          Live Overview
+        </button>
+
+        <button class="nav-item" data-page="page-tests">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          Stress Tests
+        </button>
+
+        <button class="nav-item" data-page="page-drills">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="7"/>
+            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+          </svg>
+          Team Fire Drill
+        </button>
+
+        <button class="nav-item" data-page="page-ai">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          AI Code Fixes & Score
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer (System Status) -->
+      <div class="sidebar-footer">
+        <div class="connection-indicator">
+          <span class="status-dot live"></span>
+          <span id="wsStatusText">Azure Connected</span>
+        </div>
+        <div class="system-cost">
+          <span>Test Budget: <b>$2.00 max</b></span>
+          <span id="sideSpend">Spent: $0.00</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-wrapper">
+      
+      <!-- Top Action Bar -->
+      <header class="main-header">
+        <div class="header-status">
+          <div class="test-pill" id="testBanner">
+            <span class="pulse-dot idle" id="pulseDot"></span>
+            <span id="headerTestTitle">System Running Normally (No Active Test)</span>
+            <span class="timer-tag" id="headerTimer">00:00</span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn-stop" id="btnAbort" title="Stop test immediately and restore all cloud servers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            STOP TEST (RESTORE ALL)
+          </button>
+        </div>
+      </header>
+
+      <!-- PAGE 1: LIVE OVERVIEW -->
+      <div class="page-view active" id="page-overview">
+        <div class="page-heading">
+          <h2>Live System Overview</h2>
+          <p>Real-time health, customer traffic, and auto-protection shield status.</p>
+        </div>
+
+        <!-- 4 Key Numbers -->
+        <div class="kpi-row">
+          <div class="stat-card">
+            <div class="stat-title">CUSTOMER TRAFFIC</div>
+            <div class="stat-value" id="kpiRps">0.0 <small>orders/sec</small></div>
+            <div class="stat-sub">
+              <span class="badge badge-success" id="kpiSuccessOrders">0 Successful</span>
+              <span class="badge badge-warning" id="kpiDegradedOrders">0 Saved by Backup</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-title">CUSTOMER WAIT TIME</div>
+            <div class="stat-value" id="kpiP99">0 <small>ms</small></div>
+            <div class="stat-sub">
+              <span>Typical: <b id="kpiP50">0ms</b></span> • <span>Slowest 1%: <b id="kpiP95">0ms</b></span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-title">SAFETY SHIELD</div>
+            <div class="shield-badge state-closed" id="cbBadge">
+              <span class="dot"></span>
+              <span id="cbStateText">NORMAL (All Good)</span>
+            </div>
+            <div class="stat-sub">
+              <span>Triggered: <b id="cbTripCount">0 times</b></span> • <span>Orders Saved: <b id="cbFallbackCount">0</b></span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-title">CLOUD SPEND SAFETY</div>
+            <div class="stat-value" id="kpiSpend">$0.00 <small>USD</small></div>
+            <div class="stat-sub">
+              <span>Rate: <b id="kpiBurnRate">$0.05/min</b></span> • <span id="kpiReplicas">2 Cloud Servers</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts (Spacious & Clean) -->
+        <div class="charts-stack">
+          <div class="clean-card">
+            <div class="card-top">
+              <h3>Customer Wait Time (Speed in Milliseconds)</h3>
+              <div class="legend-pills">
+                <span class="pill-dot p50">Typical Average</span>
+                <span class="pill-dot p95">Slower Orders</span>
+                <span class="pill-dot p99">Worst Delay</span>
+              </div>
+            </div>
+            <div class="chart-box">
+              <canvas id="latencyChart"></canvas>
+            </div>
+          </div>
+
+          <div class="clean-card">
+            <div class="card-top">
+              <h3>Orders Processed (Live Breakdown)</h3>
+              <div class="legend-pills">
+                <span class="pill-dot ok">Normal Success</span>
+                <span class="pill-dot degraded">Saved by Backup</span>
+                <span class="pill-dot fail">Dropped Orders</span>
+              </div>
+            </div>
+            <div class="chart-box">
+              <canvas id="throughputChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 2: STRESS TESTS CENTER -->
+      <div class="page-view" id="page-tests">
+        <div class="page-heading">
+          <h2>Stress Testing Center</h2>
+          <p>Choose an intentional failure scenario to test how your system auto-heals.</p>
+        </div>
+
+        <div class="tests-layout">
+          <!-- Left: Scenarios Selector -->
+          <div class="clean-card flex-2">
+            <h3>1. Choose a Failure Scenario</h3>
+            <div class="scenario-cards-grid" id="scenarioGrid">
+              <div class="scenario-option selected" data-scenario="cosmos_429">
+                <div class="scenario-icon">🗄️</div>
+                <div class="scenario-info">
+                  <h4>Database Overload</h4>
+                  <p>Simulates thousands of buyers rushing in at once, causing the database to hit rate limits.</p>
+                </div>
+              </div>
+
+              <div class="scenario-option" data-scenario="brownout">
+                <div class="scenario-icon">🌐</div>
+                <div class="scenario-info">
+                  <h4>Slow Network Delay</h4>
+                  <p>Adds a 1-second delay to downstream payments to see if the website freezes or protects itself.</p>
+                </div>
+              </div>
+
+              <div class="scenario-option" data-scenario="pod_crash">
+                <div class="scenario-icon">💥</div>
+                <div class="scenario-info">
+                  <h4>Server Sudden Crash</h4>
+                  <p>Turns off an active cloud container instance to verify traffic shifts without errors.</p>
+                </div>
+              </div>
+
+              <div class="scenario-option" data-scenario="poison_pill">
+                <div class="scenario-icon">⚡</div>
+                <div class="scenario-info">
+                  <h4>Corrupted Data Error Storm</h4>
+                  <p>Sends bad data causing internal server errors to test dead-letter quarantine queues.</p>
+                </div>
+              </div>
+
+              <div class="scenario-option" data-scenario="multi_region">
+                <div class="scenario-icon">🏢</div>
+                <div class="scenario-info">
+                  <h4>Data Center Outage (Failover)</h4>
+                  <p>Simulates primary East US region shutting down to verify automatic switch to West US.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="test-controls-bar">
+              <div class="control-input">
+                <label>TRAFFIC SPEED (ORDERS / SEC)</label>
+                <input type="number" id="testRps" value="15" min="5" max="50">
+              </div>
+              <div class="control-input">
+                <label>DURATION (SECONDS)</label>
+                <input type="number" id="testDuration" value="30" min="10" max="120">
+              </div>
+              <button class="btn-primary" id="btnStartTest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                START AUTO-HEALING TEST
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Shield Activity History -->
+          <div class="clean-card flex-1">
+            <h3>Recent Auto-Healing Events</h3>
+            <div class="activity-feed" id="activityFeed">
+              <div class="activity-item">
+                <span class="activity-time">--:--</span>
+                <span class="activity-text">System running normally. Safety shield ready.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 3: TEAM FIRE DRILL -->
+      <div class="page-view" id="page-drills">
+        <div class="page-heading">
+          <h2>Team Emergency Fire Drill Mode</h2>
+          <p>Train your engineering team to spot and fix server outages under pressure.</p>
+        </div>
+
+        <div class="drill-grid">
+          <!-- Drill Control Card -->
+          <div class="clean-card">
+            <div class="card-top">
+              <h3>Active Fire Drill</h3>
+              <button class="btn-secondary" id="btnStartGameDay">Start Surprise Fire Drill</button>
+            </div>
+
+            <div class="drill-status-box" id="drillBox">
+              <div class="drill-empty" id="drillEmptyState">
+                <div class="drill-icon-large">🚒</div>
+                <h4>No Fire Drill Running</h4>
+                <p>Click "Start Surprise Fire Drill" to inject a random mystery failure into the system. You will race against the clock to spot the problem and fix it.</p>
+              </div>
+
+              <div class="drill-active-view" id="drillActiveState" style="display: none;">
+                <div class="drill-alert-bar">
+                  🚨 <b>MYSTERY INCIDENT IN PROGRESS</b>
+                  <span class="drill-timer" id="drillLiveTimer">0s</span>
+                </div>
+                <p>An undisclosed server failure was injected. Check your system speed and metrics to diagnose what broke!</p>
+                <div class="drill-step-buttons">
+                  <button class="btn-step warn" id="btnAckDrill">Step 1: I Spotted the Issue! (Record Spot Time)</button>
+                  <button class="btn-step success" id="btnMitigateDrill">Step 2: I Fixed It! (Record Fix Time)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Team Leaderboard Card -->
+          <div class="clean-card">
+            <h3>Team Readiness Leaderboard</h3>
+            <div class="table-container">
+              <table class="clean-table">
+                <thead>
+                  <tr>
+                    <th>TEAM</th>
+                    <th>TIME TO SPOT</th>
+                    <th>TIME TO FIX</th>
+                    <th>READINESS</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboardBody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE 4: AI FIXES & SCORECARD -->
+      <div class="page-view" id="page-ai">
+        <div class="page-heading">
+          <h2>System Reliability Scorecard & AI Code Fix</h2>
+          <p>Automated resilience scoring and AI-generated GitHub Pull Request patches.</p>
+        </div>
+
+        <div class="ai-page-layout">
+          <!-- Reliability Scorecard Card -->
+          <div class="clean-card">
+            <div class="score-header-box">
+              <div class="big-score-circle">
+                <span class="big-score-num" id="aiScoreNum">--</span>
+                <span class="big-score-lbl">OVERALL HEALTH</span>
+              </div>
+              <div class="score-meta">
+                <h3 id="aiGradeText">Awaiting Test Results</h3>
+                <p>Run any failure stress test to receive a full 0 to 100 reliability evaluation across all 4 system pillars.</p>
+              </div>
+            </div>
+
+            <div class="pillars-list">
+              <div class="pillar-item">
+                <div class="pillar-label">
+                  <span>Damage Prevention (Did buyers notice?)</span>
+                  <b id="pContainment">-- / 40</b>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="barContainment" style="width: 0%"></div></div>
+              </div>
+
+              <div class="pillar-item">
+                <div class="pillar-label">
+                  <span>Speed Retention (Did website stay fast?)</span>
+                  <b id="pLatency">-- / 30</b>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="barLatency" style="width: 0%"></div></div>
+              </div>
+
+              <div class="pillar-item">
+                <div class="pillar-label">
+                  <span>Self-Healing Speed (How fast did it recover?)</span>
+                  <b id="pRecovery">-- / 20</b>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="barRecovery" style="width: 0%"></div></div>
+              </div>
+
+              <div class="pillar-item">
+                <div class="pillar-label">
+                  <span>Zero Lost Orders (Were all purchases saved?)</span>
+                  <b id="pIntegrity">-- / 10</b>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="barIntegrity" style="width: 0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Code Fix Patch Card -->
+          <div class="clean-card" id="aiFixCard">
+            <div class="card-top">
+              <h3>🤖 AI Automatic Code Fix (Ready to Apply)</h3>
+              <span class="pr-pill" id="aiPrBadge">Pull Request #42</span>
+            </div>
+            <p id="aiPrSummary" class="ai-summary-text">No active recommendations. Run a stress test to let Azure OpenAI inspect system traces and generate automatic code fixes.</p>
+            <div class="diff-container">
+              <pre><code id="aiDiffCode">// AI will generate automated code patches here after test completion</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

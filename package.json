@@ -1,0 +1,22 @@
+{
+  "name": "azure-chaosguard-monorepo",
+  "version": "1.0.0",
+  "description": "Azure ChaosGuard - Enterprise Resilience Engineering & Self-Healing Validator",
+  "private": true,
+  "scripts": {
+    "start:target": "cmd.exe /c npm --prefix apps/target-ecommerce run start",
+    "start:chaos": "cmd.exe /c npm --prefix apps/chaos-engine run start",
+    "start:dashboard": "cmd.exe /c npm --prefix apps/dashboard run dev"
+  },
+  "keywords": [
+    "azure",
+    "chaos-engineering",
+    "resilience",
+    "circuit-breaker",
+    "sre",
+    "chaos-studio",
+    "signalr"
+  ],
+  "author": "Antigravity Engineering",
+  "license": "MIT"
+}
