@@ -869,3 +869,177 @@ body {
   max-height: 240px;
   overflow-x: auto;
 }
+
+/* Cost Analyzer Page Styles */
+.cost-layout {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+}
+
+@media (max-width: 1024px) {
+  .cost-layout { grid-template-columns: 1fr; }
+}
+
+.cost-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 14px;
+}
+
+.cost-legend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.cost-legend-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cost-legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.services-cost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.service-cost-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.service-cost-item:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.service-cost-item.rank-1 {
+  border-left: 3px solid #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.05), transparent);
+}
+
+.service-cost-item.rank-2 {
+  border-left: 3px solid #06b6d4;
+}
+
+.service-cost-item.rank-3 {
+  border-left: 3px solid #f59e0b;
+}
+
+.service-cost-item.rank-4 {
+  border-left: 3px solid #10b981;
+}
+
+.service-cost-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.service-name-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.service-rank-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.service-icon-small {
+  font-size: 1.1rem;
+}
+
+.service-title {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.service-tier-tag {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+
+.service-spend-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.service-spend-val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.service-pct-pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.service-pct-pill.highest {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.service-pct-pill.normal {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.finops-tip-box {
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tip-header {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.finops-tip-box p {
+  font-size: 0.82rem;
+  color: #e5e7eb;
+  line-height: 1.4;
+}

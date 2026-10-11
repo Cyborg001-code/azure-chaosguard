@@ -105,32 +105,89 @@ class TrafficStats:
 
 traffic = TrafficStats()
 
-class FinOpsGuardrail:
+class CostAnalyzer:
+    """
+    Cloud FinOps Cost Breakdown Engine.
+    Tracks real-time cost per Azure service:
+    1. Azure Cosmos DB (RU/s consumption & surge rates)
+    2. Azure Container Apps (vCPU + GiB Memory + Replicas)
+    3. Azure Cache for Redis (Fallback cache flat tier)
+    4. Azure SignalR & Application Insights (Telemetry & Log Ingestion)
+    """
     def __init__(self, max_budget_usd: float = 2.00):
         self.max_budget = max_budget_usd
-        self.current_spend = 0.0
-        self.burn_rate_min = 0.05
+        self.reset()
+
+    def reset(self):
+        self.services = {
+            "cosmos_db": {"name": "Azure Cosmos DB", "spend": 0.0, "rate_per_min": 0.038, "icon": "🗄️", "tier": "Serverless RU/s"},
+            "container_apps": {"name": "Azure Container Apps", "spend": 0.0, "rate_per_min": 0.024, "icon": "📦", "tier": "vCPU / Memory"},
+            "redis_cache": {"name": "Azure Redis Cache", "spend": 0.0, "rate_per_min": 0.012, "icon": "⚡", "tier": "Basic C0"},
+            "telemetry": {"name": "SignalR & App Insights", "spend": 0.0, "rate_per_min": 0.006, "icon": "📡", "tier": "Log Ingestion"}
+        }
+        self.total_spend = 0.0
+        self.shield_savings = 0.0
         self.replicas = 2
         self.is_tripped = False
 
-    def reset(self):
-        self.current_spend = 0.0
-        self.is_tripped = False
+    def tick(self, seconds: float = 1.0, is_experiment_active: bool = False, is_shield_active: bool = False):
+        # Under active experiment / traffic surges, Cosmos DB and Container Apps scale up
+        mult = 2.4 if is_experiment_active else 1.0
+        
+        # When Safety Shield is ON, Cosmos DB RU consumption drops because calls are diverted to cheap Redis!
+        cosmos_rate = (self.services["cosmos_db"]["rate_per_min"] * 0.3) if is_shield_active else (self.services["cosmos_db"]["rate_per_min"] * mult)
+        container_rate = self.services["container_apps"]["rate_per_min"] * (self.replicas / 2.0)
+        redis_rate = self.services["redis_cache"]["rate_per_min"]
+        telemetry_rate = self.services["telemetry"]["rate_per_min"] * (1.8 if is_experiment_active else 1.0)
 
-    def tick(self, seconds: float = 1.0):
-        rate = (self.burn_rate_min * (self.replicas / 2.0)) / 60.0
-        self.current_spend += rate * seconds
-        if self.current_spend >= self.max_budget:
+        # Accumulate spend per service
+        self.services["cosmos_db"]["spend"] += (cosmos_rate / 60.0) * seconds
+        self.services["container_apps"]["spend"] += (container_rate / 60.0) * seconds
+        self.services["redis_cache"]["spend"] += (redis_rate / 60.0) * seconds
+        self.services["telemetry"]["spend"] += (telemetry_rate / 60.0) * seconds
+
+        if is_shield_active:
+            # Savings gained by avoiding expensive Cosmos DB retries
+            self.shield_savings += ((self.services["cosmos_db"]["rate_per_min"] * mult * 0.7) / 60.0) * seconds
+
+        self.total_spend = sum(s["spend"] for s in self.services.values())
+        if self.total_spend >= self.max_budget:
             self.is_tripped = True
+
+        # Find highest cost service
+        sorted_services = sorted(self.services.items(), key=lambda x: x[1]["spend"], reverse=True)
+        highest_id, highest_data = sorted_services[0] if sorted_services else ("cosmos_db", self.services["cosmos_db"])
+        highest_pct = int((highest_data["spend"] / max(0.0001, self.total_spend)) * 100)
+
+        burn_rate_min = sum([cosmos_rate, container_rate, redis_rate, telemetry_rate])
+
         return {
-            "currentSpendUsd": round(self.current_spend, 4),
+            "totalSpendUsd": round(self.total_spend, 4),
             "maxBudgetUsd": self.max_budget,
             "isTripped": self.is_tripped,
-            "burnRatePerMinUsd": round(self.burn_rate_min * (self.replicas / 2.0), 3),
-            "autoscaledReplicas": self.replicas
+            "burnRatePerMinUsd": round(burn_rate_min, 3),
+            "projectedMonthlyUsd": round(burn_rate_min * 60 * 24 * 30, 2),
+            "shieldSavingsUsd": round(self.shield_savings, 4),
+            "highestCostService": {
+                "id": highest_id,
+                "name": highest_data["name"],
+                "icon": highest_data["icon"],
+                "spend": round(highest_data["spend"], 4),
+                "percentage": highest_pct
+            },
+            "breakdown": [
+                {
+                    "id": k,
+                    "name": v["name"],
+                    "icon": v["icon"],
+                    "tier": v["tier"],
+                    "spend": round(v["spend"], 4),
+                    "percentage": int((v["spend"] / max(0.0001, self.total_spend)) * 100)
+                } for k, v in sorted_services
+            ]
         }
 
-finops = FinOpsGuardrail(2.00)
+cost_analyzer = CostAnalyzer(2.00)
 
 class BaselineEngine:
     def __init__(self):
@@ -317,7 +374,9 @@ async def broadcast_loop():
         await asyncio.sleep(1.0)
         telemetry = await fetch_order_metrics()
         traffic_snap = traffic.get_snapshot()
-        finops_state = finops.tick(1.0)
+        is_active = current_experiment["status"] == "ACTIVE"
+        is_shield = telemetry.get("circuitState") == "OPEN"
+        cost_state = cost_analyzer.tick(1.0, is_experiment_active=is_active, is_shield_active=is_shield)
         baseline_state = baseline.evaluate(traffic_snap["p99"] or 40)
         if traffic_snap["p99"] > 0:
             baseline.record(traffic_snap["p99"])
@@ -326,7 +385,7 @@ async def broadcast_loop():
         if current_experiment["status"] == "ACTIVE":
             current_experiment["elapsedSec"] += 1
 
-            if finops_state["isTripped"]:
+            if cost_state["isTripped"]:
                 print("[CHAOS-PY] [FINOPS-ABORT] Budget ceiling reached. Aborting test.")
                 traffic.is_running = False
                 await reset_payment_faults()
@@ -344,7 +403,14 @@ async def broadcast_loop():
             "experiment": current_experiment,
             "traffic": traffic_snap,
             "telemetry": telemetry,
-            "finops": finops_state,
+            "finops": {
+                "currentSpendUsd": cost_state["totalSpendUsd"],
+                "maxBudgetUsd": cost_state["maxBudgetUsd"],
+                "isTripped": cost_state["isTripped"],
+                "burnRatePerMinUsd": cost_state["burnRatePerMinUsd"],
+                "autoscaledReplicas": cost_analyzer.replicas
+            },
+            "cost": cost_state,
             "baseline": baseline_state,
             "gameday": {"activeDrill": gameday.active_drill, "leaderboard": gameday.leaderboard}
         })
@@ -368,13 +434,17 @@ async def reset_payment_faults():
 async def get_scenarios():
     return list(SCENARIOS.values())
 
+@app.get("/api/cost/breakdown")
+async def get_cost_breakdown():
+    return cost_analyzer.tick(0)
+
 @app.post("/api/experiments/start")
 async def start_experiment(req: StartExperimentRequest):
     scenario = SCENARIOS.get(req.scenarioId)
     if not scenario:
         return {"error": "Invalid scenario"}
 
-    finops.reset()
+    cost_analyzer.reset()
     traffic.reset()
     traffic.target_rps = req.rps
     traffic.is_running = True
@@ -408,7 +478,14 @@ async def get_status():
     return {
         "experiment": current_experiment,
         "traffic": traffic.get_snapshot(),
-        "finops": finops.tick(0),
+        "finops": {
+            "currentSpendUsd": cost_analyzer.total_spend,
+            "maxBudgetUsd": cost_analyzer.max_budget,
+            "isTripped": cost_analyzer.is_tripped,
+            "burnRatePerMinUsd": 0.05,
+            "autoscaledReplicas": cost_analyzer.replicas
+        },
+        "cost": cost_analyzer.tick(0),
         "baseline": baseline.evaluate(traffic.get_snapshot()["p99"] or 40),
         "gameday": {"activeDrill": gameday.active_drill, "leaderboard": gameday.leaderboard},
         "telemetry": telemetry

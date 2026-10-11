@@ -6,6 +6,7 @@ const WS_URL = 'ws://localhost:4000';
 let ws = null;
 let latencyChart = null;
 let throughputChart = null;
+let costDoughnutChart = null;
 const MAX_CHART_POINTS = 30;
 
 // Chart Data Buffers
@@ -57,11 +58,15 @@ function initNavigation() {
       }
     });
 
-    // Resize charts if switching to overview
+    // Resize charts if switching to overview or cost page
     if (targetPageId === 'page-overview' && latencyChart && throughputChart) {
       setTimeout(() => {
         latencyChart.resize();
         throughputChart.resize();
+      }, 50);
+    } else if (targetPageId === 'page-cost' && costDoughnutChart) {
+      setTimeout(() => {
+        costDoughnutChart.resize();
       }, 50);
     }
   };
@@ -147,6 +152,27 @@ function initCharts() {
         x: { ...commonOptions.scales.x, stacked: true },
         y: { ...commonOptions.scales.y, stacked: true }
       }
+    }
+  });
+
+  // Cost Doughnut Chart
+  const ctxCost = document.getElementById('costDoughnutChart').getContext('2d');
+  costDoughnutChart = new Chart(ctxCost, {
+    type: 'doughnut',
+    data: {
+      labels: ['Azure Cosmos DB', 'Azure Container Apps', 'Azure Redis Cache', 'SignalR & App Insights'],
+      datasets: [{
+        data: [47, 30, 15, 8],
+        backgroundColor: ['#ef4444', '#06b6d4', '#f59e0b', '#10b981'],
+        borderWidth: 0,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      cutout: '72%'
     }
   });
 }
@@ -287,8 +313,111 @@ function handleTelemetryTick(data) {
     renderScorecard(experiment.scorecard);
   }
 
+  // Cost Analyzer (Page: Cloud Cost Analyzer)
+  if (data.cost) {
+    renderCostAnalyzer(data.cost);
+  }
+
   // GameDay (Page 3)
   renderGameDay(gameday);
+}
+
+// 6. FinOps Cost Analyzer
+const SERVICE_COLORS = {
+  cosmos_db: '#ef4444',
+  container_apps: '#06b6d4',
+  redis_cache: '#f59e0b',
+  telemetry: '#10b981'
+};
+
+function renderCostAnalyzer(cost) {
+  if (!cost) return;
+
+  // 1. Top KPI Summary Cards
+  const totalSpendEl = document.getElementById('costTotalSpend');
+  if (totalSpendEl) totalSpendEl.innerHTML = `$${cost.totalSpendUsd.toFixed(2)} <small>USD</small>`;
+
+  const highestNameEl = document.getElementById('costHighestName');
+  if (highestNameEl && cost.highestCostService) {
+    highestNameEl.innerText = `${cost.highestCostService.icon} ${cost.highestCostService.name}`;
+  }
+
+  const highestPctEl = document.getElementById('costHighestPct');
+  if (highestPctEl && cost.highestCostService) {
+    highestPctEl.innerText = `${cost.highestCostService.percentage}% of Total Bill`;
+  }
+
+  const savingsEl = document.getElementById('costSavings');
+  if (savingsEl) {
+    savingsEl.innerHTML = `$${cost.shieldSavingsUsd.toFixed(2)} <small>Saved</small>`;
+  }
+
+  const monthlyEl = document.getElementById('costMonthly');
+  if (monthlyEl) {
+    monthlyEl.innerHTML = `$${Math.round(cost.projectedMonthlyUsd)} <small>/ month</small>`;
+  }
+
+  const burnRateEl = document.getElementById('costBurnRate');
+  if (burnRateEl) {
+    burnRateEl.innerText = `$${cost.burnRatePerMinUsd}/min`;
+  }
+
+  // 2. Update Doughnut Chart
+  if (costDoughnutChart && cost.breakdown && cost.breakdown.length > 0) {
+    costDoughnutChart.data.labels = cost.breakdown.map(b => b.name);
+    costDoughnutChart.data.datasets[0].data = cost.breakdown.map(b => Math.max(1, b.percentage));
+    costDoughnutChart.data.datasets[0].backgroundColor = cost.breakdown.map(b => SERVICE_COLORS[b.id] || '#6b7280');
+    costDoughnutChart.update();
+  }
+
+  // 3. Update Chart Legend
+  const legendList = document.getElementById('costLegendList');
+  if (legendList && cost.breakdown) {
+    legendList.innerHTML = cost.breakdown.map(item => `
+      <div class="cost-legend-item">
+        <div class="cost-legend-left">
+          <span class="cost-legend-color" style="background: ${SERVICE_COLORS[item.id] || '#6b7280'};"></span>
+          <span>${item.icon} ${item.name}</span>
+        </div>
+        <b>${item.percentage}% ($${item.spend.toFixed(2)})</b>
+      </div>
+    `).join('');
+  }
+
+  // 4. Update Ranked Service List
+  const servicesList = document.getElementById('servicesCostList');
+  if (servicesList && cost.breakdown) {
+    servicesList.innerHTML = cost.breakdown.map((item, index) => {
+      const rank = index + 1;
+      const isHighest = rank === 1;
+      const barColor = SERVICE_COLORS[item.id] || '#06b6d4';
+      return `
+        <div class="service-cost-item rank-${rank}">
+          <div class="service-cost-top">
+            <div class="service-name-group">
+              <span class="service-rank-badge">#${rank}</span>
+              <span class="service-icon-small">${item.icon}</span>
+              <span class="service-title">${item.name}</span>
+              <span class="service-tier-tag">${item.tier}</span>
+            </div>
+            <div class="service-spend-group">
+              <span class="service-spend-val">$${item.spend.toFixed(4)}</span>
+              <span class="service-pct-pill ${isHighest ? 'highest' : 'normal'}">${item.percentage}% share</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${Math.max(4, item.percentage)}%; background: ${barColor};"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 5. Dynamic FinOps Tip
+  const tipEl = document.getElementById('finopsTipText');
+  if (tipEl && cost.highestCostService) {
+    tipEl.innerHTML = `<b>${cost.highestCostService.name}</b> accounts for the highest cloud cost (<b>${cost.highestCostService.percentage}%</b> of your bill) due to serverless RU/s bursts under traffic surges. Enabling the <b>Safety Shield</b> routes requests to Azure Redis Cache, saving approximately <b>$${cost.shieldSavingsUsd.toFixed(2)} USD</b> and preventing runaway database charges.`;
+  }
 }
 
 // 6. Render AI Scorecard & Diff

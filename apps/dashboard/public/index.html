@@ -55,6 +55,14 @@
           Team Fire Drill
         </button>
 
+        <button class="nav-item" data-page="page-cost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          Cost Analyzer
+        </button>
+
         <button class="nav-item" data-page="page-ai">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -316,6 +324,82 @@
                   <!-- Dynamically populated -->
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGE: CLOUD COST ANALYZER -->
+      <div class="page-view" id="page-cost">
+        <div class="page-heading">
+          <h2>Cloud Cost Analyzer (FinOps)</h2>
+          <p>Real-time breakdown of which Azure cloud services cost more, and how much money the auto-healing shield saves.</p>
+        </div>
+
+        <!-- 4 Cost Summary Cards -->
+        <div class="kpi-row">
+          <div class="stat-card">
+            <div class="stat-title">TOTAL CLOUD SPEND</div>
+            <div class="stat-value" id="costTotalSpend">$0.00 <small>USD</small></div>
+            <div class="stat-sub">
+              <span>Budget Cap: <b>$2.00 max</b></span>
+            </div>
+          </div>
+
+          <div class="stat-card" style="border-color: rgba(239, 68, 68, 0.35);">
+            <div class="stat-title">HIGHEST COST SERVICE</div>
+            <div class="stat-value" style="font-size: 1.35rem; color: #f87171;" id="costHighestName">🗄️ Azure Cosmos DB</div>
+            <div class="stat-sub">
+              <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171;" id="costHighestPct">47% of Total Bill</span>
+            </div>
+          </div>
+
+          <div class="stat-card" style="border-color: rgba(16, 185, 129, 0.35);">
+            <div class="stat-title">MONEY SAVED BY SHIELD</div>
+            <div class="stat-value" style="color: #34d399;" id="costSavings">$0.00 <small>Saved</small></div>
+            <div class="stat-sub">
+              <span style="color: #34d399;">Prevented runaway RU surges</span>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-title">PROJECTED MONTHLY BILL</div>
+            <div class="stat-value" id="costMonthly">$0 <small>/ month</small></div>
+            <div class="stat-sub">
+              <span>Current burn: <b id="costBurnRate">$0.08/min</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 Column Cost Workspace -->
+        <div class="cost-layout">
+          <!-- Left: Doughnut Breakdown Chart -->
+          <div class="clean-card flex-1">
+            <div class="card-top">
+              <h3>Service Cost Share (%)</h3>
+            </div>
+            <div class="chart-box" style="height: 280px;">
+              <canvas id="costDoughnutChart"></canvas>
+            </div>
+            <div class="cost-legend-list" id="costLegendList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Right: Detailed Ranked Service Breakdown -->
+          <div class="clean-card flex-2">
+            <div class="card-top">
+              <h3>Which Service Costs More? (Ranked)</h3>
+              <span class="brand-tag">Real-time Azure Rates</span>
+            </div>
+            <div class="services-cost-list" id="servicesCostList">
+              <!-- Dynamically populated with ranked service cost cards -->
+            </div>
+
+            <!-- FinOps Recommendation Tip Box -->
+            <div class="finops-tip-box">
+              <div class="tip-header">💡 FinOps Recommendation</div>
+              <p id="finopsTipText"><b>Azure Cosmos DB</b> accounts for the majority of your bill due to un-throttled burst RU/s. Enabling the Safety Shield (Redis Fallback) automatically protects connection pools and reduces Cosmos DB spend by ~38% during traffic spikes.</p>
             </div>
           </div>
         </div>
