@@ -30,6 +30,7 @@ const FRIENDLY_NAMES = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  initThemeToggle();
   initNavigation();
   initScenarioSelector();
   initCharts();
@@ -103,7 +104,62 @@ function initScenarioSelector() {
 }
 
 // 3. Initialize Chart.js
+function getThemeChartColors(theme) {
+  const isLight = theme === 'light';
+  return {
+    gridColor: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.04)',
+    tickColor: isLight ? '#64748b' : '#9ca3af'
+  };
+}
+
+function updateChartsTheme(theme) {
+  const { gridColor, tickColor } = getThemeChartColors(theme);
+  [latencyChart, throughputChart].forEach(chart => {
+    if (chart && chart.options && chart.options.scales) {
+      if (chart.options.scales.x) {
+        chart.options.scales.x.grid.color = gridColor;
+        chart.options.scales.x.ticks.color = tickColor;
+      }
+      if (chart.options.scales.y) {
+        chart.options.scales.y.grid.color = gridColor;
+        chart.options.scales.y.ticks.color = tickColor;
+      }
+      chart.update('none');
+    }
+  });
+}
+
+function initThemeToggle() {
+  const savedTheme = localStorage.getItem('chaosguard_theme') || 'dark';
+  applyTheme(savedTheme);
+
+  const themeSegments = document.querySelectorAll('.theme-segment');
+  themeSegments.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetTheme = btn.getAttribute('data-theme');
+      applyTheme(targetTheme);
+      localStorage.setItem('chaosguard_theme', targetTheme);
+    });
+  });
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const themeSegments = document.querySelectorAll('.theme-segment');
+  themeSegments.forEach(btn => {
+    if (btn.getAttribute('data-theme') === theme) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  updateChartsTheme(theme);
+}
+
 function initCharts() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const { gridColor, tickColor } = getThemeChartColors(currentTheme);
+
   const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -111,12 +167,12 @@ function initCharts() {
     plugins: { legend: { display: false } },
     scales: {
       x: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 10 } }
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: { family: 'JetBrains Mono', size: 10 } }
       },
       y: {
-        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-        ticks: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } }
+        grid: { color: gridColor },
+        ticks: { color: tickColor, font: { family: 'JetBrains Mono', size: 10 } }
       }
     }
   };
