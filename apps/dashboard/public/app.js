@@ -183,9 +183,9 @@ function initCharts() {
     data: {
       labels: chartLabels,
       datasets: [
-        { label: 'Typical', data: p50Data, borderColor: '#06b6d4', borderWidth: 2, tension: 0.3, pointRadius: 0 },
-        { label: 'Slower', data: p95Data, borderColor: '#f59e0b', borderWidth: 2, tension: 0.3, pointRadius: 0 },
-        { label: 'Max Delay', data: p99Data, borderColor: '#ef4444', borderWidth: 2.5, tension: 0.3, pointRadius: 1 }
+        { label: 'Typical', data: p50Data, borderColor: '#376E6F', borderWidth: 2, tension: 0.3, pointRadius: 0 },
+        { label: 'Slower', data: p95Data, borderColor: '#2F4454', borderWidth: 2, tension: 0.3, pointRadius: 0 },
+        { label: 'Max Delay', data: p99Data, borderColor: '#DA7B93', borderWidth: 2.5, tension: 0.3, pointRadius: 1 }
       ]
     },
     options: commonOptions
@@ -197,9 +197,9 @@ function initCharts() {
     data: {
       labels: chartLabels,
       datasets: [
-        { label: '200 OK', data: okData, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderRadius: 4 },
-        { label: '202 Degraded', data: degradedData, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderRadius: 4 },
-        { label: '5xx Failed', data: failData, backgroundColor: 'rgba(239, 68, 68, 0.85)', borderRadius: 4 }
+        { label: '200 OK', data: okData, backgroundColor: 'rgba(55, 110, 111, 0.85)', borderRadius: 4 },
+        { label: '202 Degraded', data: degradedData, backgroundColor: 'rgba(218, 123, 147, 0.85)', borderRadius: 4 },
+        { label: '5xx Failed', data: failData, backgroundColor: 'rgba(46, 21, 27, 0.90)', borderRadius: 4 }
       ]
     },
     options: {
@@ -220,7 +220,7 @@ function initCharts() {
       labels: ['Azure Cosmos DB', 'Azure Container Apps', 'Azure Redis Cache', 'SignalR & App Insights'],
       datasets: [{
         data: [47, 30, 15, 8],
-        backgroundColor: ['#ef4444', '#06b6d4', '#f59e0b', '#10b981'],
+        backgroundColor: ['#DA7B93', '#376E6F', '#2F4454', '#2E151B'],
         borderWidth: 0,
         hoverOffset: 4
       }]
@@ -400,10 +400,10 @@ function handleTelemetryTick(data) {
 
 // 6. FinOps Cost Analyzer
 const SERVICE_COLORS = {
-  cosmos_db: '#ef4444',
-  container_apps: '#06b6d4',
-  redis_cache: '#f59e0b',
-  telemetry: '#10b981'
+  cosmos_db: '#DA7B93',
+  container_apps: '#376E6F',
+  redis_cache: '#2F4454',
+  telemetry: '#2E151B'
 };
 
 function renderCostAnalyzer(cost) {
@@ -442,7 +442,7 @@ function renderCostAnalyzer(cost) {
   if (costDoughnutChart && cost.breakdown && cost.breakdown.length > 0) {
     costDoughnutChart.data.labels = cost.breakdown.map(b => b.name);
     costDoughnutChart.data.datasets[0].data = cost.breakdown.map(b => Math.max(1, b.percentage));
-    costDoughnutChart.data.datasets[0].backgroundColor = cost.breakdown.map(b => SERVICE_COLORS[b.id] || '#6b7280');
+    costDoughnutChart.data.datasets[0].backgroundColor = cost.breakdown.map(b => SERVICE_COLORS[b.id] || '#2F4454');
     costDoughnutChart.update();
   }
 
@@ -452,7 +452,7 @@ function renderCostAnalyzer(cost) {
     legendList.innerHTML = cost.breakdown.map(item => `
       <div class="cost-legend-item">
         <div class="cost-legend-left">
-          <span class="cost-legend-color" style="background: ${SERVICE_COLORS[item.id] || '#6b7280'};"></span>
+          <span class="cost-legend-color" style="background: ${SERVICE_COLORS[item.id] || '#2F4454'};"></span>
           <span>${item.icon} ${item.name}</span>
         </div>
         <b>${item.percentage}% ($${item.spend.toFixed(2)})</b>
@@ -466,7 +466,7 @@ function renderCostAnalyzer(cost) {
     servicesList.innerHTML = cost.breakdown.map((item, index) => {
       const rank = index + 1;
       const isHighest = rank === 1;
-      const barColor = SERVICE_COLORS[item.id] || '#06b6d4';
+      const barColor = SERVICE_COLORS[item.id] || '#376E6F';
       return `
         <div class="service-cost-item rank-${rank}">
           <div class="service-cost-top">
@@ -637,7 +637,7 @@ function renderGameDay(gameday) {
         <td><b>${item.team}</b></td>
         <td>${item.mttdSec}s</td>
         <td>${item.mttmSec}s</td>
-        <td><span style="color:#34d399;font-weight:700">${item.score} pts</span></td>
+        <td><span style="color:#376E6F;font-weight:700">${item.score} pts</span></td>
       </tr>
     `).join('');
   }
